@@ -61,26 +61,30 @@ const CacheStore = {
     });
   },
 
-  flushExpired(){
-    return AsyncStorage.getAllKeys().then((keys) => {
-      keys.forEach((key) => {
-        if (key.indexOf(CACHE_EXPIRATION_PREFIX) == 0){
-          var exprKey = key;
-          return AsyncStorage.getItem(exprKey).then((expiry) => {
-            if (expiry && currentTime() >= parseInt(expiry, 10)){
-              var theKey = CACHE_PREFIX + key.replace(CACHE_EXPIRATION_PREFIX, '');
-              return AsyncStorage.multiRemove([exprKey, theKey]);
-            }
-            return Promise.resolve();
-          });
+  async flushExpired() {
+    const keys = await AsyncStorage.getAllKeys();
+    var deletedValues = [];
+
+    await Promise.all(keys.map(async key => {
+      if (key.indexOf(CACHE_EXPIRATION_PREFIX) == 0) {
+        var exprKey = key;
+        const expiry = await AsyncStorage.getItem(exprKey);
+        if (expiry && currentTime() >= parseInt(expiry, 10)) {
+          var theKey = CACHE_PREFIX + key.replace(CACHE_EXPIRATION_PREFIX, "");
+          deletedValues.push(await AsyncStorage.getItem(theKey));
+          await AsyncStorage.multiRemove([exprKey, theKey]);
         }
-        return Promise.resolve();
-      });
-    });
+      }
+    }));
+    return deletedValues;
   }
+
 };
 
+
+
+
 // Always flush expired items on start time
-CacheStore.flushExpired();
+// CacheStore.flushExpired();
 
 export default CacheStore;
